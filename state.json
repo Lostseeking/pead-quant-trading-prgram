@@ -1,0 +1,44 @@
+{
+  "OKTA-2026Q4-2026-03-04": {
+    "symbol": "OKTA",
+    "date": "2026-03-04",
+    "year": 2026,
+    "quarter": 4,
+    "epsActual": 0.9,
+    "epsEstimate": 0.8637,
+    "result": "BEAT",
+    "detected_at": "2026-03-04T23:21:58.239058+00:00"
+  },
+  "CHPT-2026Q4-2026-03-04": {
+    "symbol": "CHPT",
+    "date": "2026-03-04",
+    "year": 2026,
+    "quarter": 4,
+    "epsActual": -0.54,
+    "epsEstimate": -1.1138,
+    "result": "BEAT",
+    "detected_at": "2026-03-04T23:21:58.239058+00:00"
+  },
+  "AVGO-2026Q1-2026-03-04": {
+    "symbol": "AVGO",
+    "date": "2026-03-04",
+    "year": 2026,
+    "quarter": 1,
+    "epsActual": 2.05,
+    "epsEstimate": 2.0607,
+    "result": "MISS",
+    "detected_at": "2026-03-04T23:21:58.239058+00:00"
+  },
+  "PATH-2026Q4-2026-03-11": {
+    "symbol": "PATH",
+    "date": "2026-03-11",
+    "year": 2026,
+    "quarter": 4,
+    "eps_actual": 0.3,
+    "eps_estimate": 0.2597,
+    "surprise": 0.0403,
+    "surprise_pct": 15.517905275317675,
+    "result": "BEAT",
+    "detected_at": "2026-03-11T23:23:45.585521"
+  }
+}

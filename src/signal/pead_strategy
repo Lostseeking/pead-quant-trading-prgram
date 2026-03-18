@@ -1,0 +1,189 @@
+import pandas as pd
+
+
+INPUT_FILE = "data/processed/earnings_features_2018_2026.csv"
+OUTPUT_FILE = "data/processed/pead_signals_2018_2026.csv"
+
+
+def safe_float(x):
+    if pd.isna(x):
+        return None
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def classify_signal(row):
+    eps_surprise = safe_float(row.get("eps_surprise_pct"))
+    sue = safe_float(row.get("sue"))
+    rev_surprise = safe_float(row.get("rev_surprise_pct"))
+    gap_pct = safe_float(row.get("gap_pct"))
+    volume_ratio = safe_float(row.get("volume_ratio"))
+    guidance_flag = row.get("guidance_flag", 0)
+
+    score = 0
+    reasons = []
+
+    # SUE
+    if sue is not None:
+        if sue >= 2.0:
+            score += 2
+            reasons.append("SUE very strong")
+        elif sue >= 1.0:
+            score += 1
+            reasons.append("SUE positive")
+        elif sue <= -2.0:
+            score -= 2
+            reasons.append("SUE very weak")
+        elif sue <= -1.0:
+            score -= 1
+            reasons.append("SUE negative")
+
+    # EPS surprise pct
+    if eps_surprise is not None:
+        if eps_surprise >= 0.10:
+            score += 1
+            reasons.append("EPS strong beat")
+        elif eps_surprise <= -0.10:
+            score -= 1
+            reasons.append("EPS strong miss")
+
+    # Revenue surprise
+    if rev_surprise is not None:
+        if rev_surprise >= 0.03:
+            score += 1
+            reasons.append("Revenue beat")
+        elif rev_surprise <= -0.03:
+            score -= 1
+            reasons.append("Revenue miss")
+
+    # Gap confirmation
+    if gap_pct is not None:
+        if gap_pct >= 0.01:
+            score += 1
+            reasons.append("Positive gap")
+        elif gap_pct <= -0.01:
+            score -= 1
+            reasons.append("Negative gap")
+
+    # Volume confirmation
+    if volume_ratio is not None:
+        if volume_ratio >= 1.5:
+            score += 1
+            reasons.append("High volume")
+        elif volume_ratio < 0.7:
+            score -= 1
+            reasons.append("Weak volume")
+
+    # Guidance
+    try:
+        guidance_flag = int(guidance_flag)
+    except (TypeError, ValueError):
+        guidance_flag = 0
+
+    if guidance_flag == 1:
+        score += 2
+        reasons.append("Guidance raised")
+    elif guidance_flag == -1:
+        score -= 2
+        reasons.append("Guidance lowered")
+
+    # Final decision
+    if score >= 4:
+        signal = "LONG"
+    else:
+        signal = "NONE"
+
+    return score, signal, "; ".join(reasons)
+
+
+def score_dataframe(df):
+    df = df.copy()
+
+    scores = []
+    signals = []
+    reasons_list = []
+
+    for _, row in df.iterrows():
+        score, signal, reasons = classify_signal(row)
+        scores.append(score)
+        signals.append(signal)
+        reasons_list.append(reasons)
+
+    df["score"] = scores
+    df["signal"] = signals
+    df["reasons"] = reasons_list
+
+    return df
+
+
+def filter_selected_tickers(df, tickers):
+    tickers = [t.upper() for t in tickers]
+    return df[df["symbol"].str.upper().isin(tickers)].copy()
+
+
+def filter_latest_event_per_ticker(df):
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values(["symbol", "date"])
+    df = df.groupby("symbol", as_index=False).tail(1)
+    return df
+
+
+def run_for_selected_tickers(tickers, latest_only=True):
+    df = pd.read_csv(INPUT_FILE)
+
+    df = filter_selected_tickers(df, tickers)
+
+    if latest_only:
+        df = filter_latest_event_per_ticker(df)
+
+    if df.empty:
+        print("No matching rows found.")
+        return
+
+    scored_df = score_dataframe(df)
+
+    print("\nSelected ticker scores:")
+    print(scored_df[[
+        "symbol", "date", "eps_surprise_pct",
+        "rev_surprise_pct", "gap_pct", "volume_ratio",
+        "guidance_flag", "score", "signal", "reasons"
+    ]])
+
+    return scored_df
+
+
+def run_full_backtest_style():
+    df = pd.read_csv(INPUT_FILE)
+    scored_df = score_dataframe(df)
+
+    scored_df.to_csv(OUTPUT_FILE, index=False)
+
+    print(f"Saved {len(scored_df)} rows to {OUTPUT_FILE}")
+    print("\nSignal distribution:")
+    print(scored_df["signal"].value_counts(dropna=False))
+
+    print("\nTop LONG examples:")
+    print(scored_df[scored_df["signal"] == "LONG"][[
+        "symbol", "date", "eps_surprise_pct", "rev_surprise_pct",
+        "gap_pct", "volume_ratio", "score", "signal"
+    ]].head(10))
+
+
+def main():
+    # mode 1: run all
+    run_full_backtest_style()
+
+    # mode 2: run specified ticker
+    # selected = ["AVAV", "NIO"]
+    # scored_df = run_for_selected_tickers(selected, latest_only=True)
+
+    # if scored_df is not None:
+    #  scored_df.to_csv("selected_ticker_scores.csv", index=False)
+    #    print("\nSaved selected results to selected_ticker_scores.csv")
+
+
+if __name__ == "__main__":
+    main()
